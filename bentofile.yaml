@@ -1,0 +1,11 @@
+service: "service:TennisPrediction"
+labels:
+  owner: leo
+  project: gallery
+include:
+  - "*.py"
+python:
+  packages:
+    - scikit-learn
+    - pandas
+    - numpy
