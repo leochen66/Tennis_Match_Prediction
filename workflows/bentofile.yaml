@@ -4,6 +4,8 @@ labels:
   project: gallery
 include:
   - "*.py"
+models:
+  - "tennis-predictor:latest"
 python:
   packages:
     - scikit-learn

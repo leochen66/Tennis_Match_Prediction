@@ -5,3 +5,6 @@ scikit-learn
 opendatasets
 bentoml
 flytekit
+flytekitplugins-envd 
+boto3
+watchtower

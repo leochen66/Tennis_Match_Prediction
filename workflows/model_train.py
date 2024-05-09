@@ -2,55 +2,41 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import bentoml
+import pickle
+import boto3
 from flytekit import task, workflow
+from datetime import datetime
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
+
+from config import MODEL_FILE, REPORT_FILE, IMPORTANCE_PLOT_FILE, BENTO_MODEL_NAME
+from aws_logger import logger
 from customized_image import image_spec
-
-
-ARTIFACTS_FOLDER = os.path.join("artifacts")
-MODEL_FILE = os.path.join(ARTIFACTS_FOLDER, "model.pkl")
-REPORT_FILE = os.path.join(ARTIFACTS_FOLDER, "report.txt")
-IMPORTANCE_PLOT_FILE = os.path.join(ARTIFACTS_FOLDER, "feature_importance_plot.png")
-
-
-def load_model() -> RandomForestClassifier:
-    model = bentoml.sklearn.load_model('tennis-predictor:latest')
-    return model
 
 
 @task(container_image=image_spec)
 def train(x: pd.DataFrame, y: pd.Series) -> RandomForestClassifier:
     rf_classifier = RandomForestClassifier(n_estimators=1500, random_state=100, max_depth=6)
     rf_classifier.fit(x, y)
+    logger.info("[model_train]Model train successfully")
 
-    # model_saved = bentoml.sklearn.save_model("tennis-predictor", rf_classifier)
-    # print(f"Model saved:{model_saved}")
-    # bentoml.models.push("tennis-predictor:latest")
-
-    # with bentoml.models.create(
-    #     name='tennis-predictor', # Name of the model in the Model Store
-    # ) as model_ref:
-    #     pipeline.save_pretrained(model_ref.path)
-    #     print(f"Model saved: {model_ref}")
+    # save model to bemtoMLCloud
+    model_saved = bentoml.sklearn.save_model(BENTO_MODEL_NAME, rf_classifier)
+    bentoml.models.push(f"{BENTO_MODEL_NAME}:latest")
+    logger.info("[model_train]Model saved in BentoCloud")
 
     return rf_classifier
 
 
-# todo: not save the model to local
 @task(container_image=image_spec)
-def evaluation(model: RandomForestClassifier, x_test: pd.DataFrame, y_test: pd.Series):
-
-    # model = load_model()
+def evaluation(model: RandomForestClassifier, x_test: pd.DataFrame, y_test: pd.Series) -> float:
 
     # Test on testing data and generate report
     y_pred = model.predict(x_test)
     report = classification_report(y_test, y_pred)
-    accuracy = accuracy_score(y_test, y_pred)
-    print("Accuracy: ", accuracy)
-    print("Classification Report:")
-    print(report)
+    accuracy = float(accuracy_score(y_test, y_pred))
+    logger.info(f"Accuracy: {accuracy}")
 
     # Save report
     with open(REPORT_FILE, 'w') as f:
@@ -71,23 +57,45 @@ def evaluation(model: RandomForestClassifier, x_test: pd.DataFrame, y_test: pd.S
     plt.savefig(IMPORTANCE_PLOT_FILE)
     plt.close()
 
+    # save model to local
+    with open(MODEL_FILE, 'wb') as f:
+        rf_classifier_loaded = pickle.dump(model, f)
+        logger.info("[model_train]Model saved in local")
 
-def predict():
-    pre_data = {
-        'Series': [0],
-        'Court': [1],
-        'Surface': [3],
-        'Player_1': [506],
-        'Player_2': [428],
-        'Rank_1': [65],
-        'Rank_2': [71],
-        'Pts_1': [802],
-        'Pts_2': [744],
-        'Odd_1': [1.5],
-        'Odd_2': [2.63],
-    }
-    pre_data = pd.DataFrame(pre_data)
+    # Upload artifacts to AWS S3
+    s3 = boto3.client('s3')
+    timestamp = datetime.now().strftime('%Y%m%d %H%M%S')
+    s3_folder_name = f'Deployment_{timestamp}'
+    bucket_name = 'tennis-prediction'
 
-    model = load_model()
-    predict = model.predict(pre_data)[0]
-    print(predict)
+    # upload file to S3
+    for file_name in [MODEL_FILE, REPORT_FILE, IMPORTANCE_PLOT_FILE]:
+        local_file_path = file_name
+
+        s3_file_path = f'{s3_folder_name}/{file_name}'
+
+        s3.upload_file(local_file_path, bucket_name, s3_file_path)
+    logger.info(f"Artifacts upload to S3 folder: {s3_folder_name}")
+
+    return accuracy
+
+
+# def predict():
+#     pre_data = {
+#         'Series': [0],
+#         'Court': [1],
+#         'Surface': [3],
+#         'Player_1': [506],
+#         'Player_2': [428],
+#         'Rank_1': [65],
+#         'Rank_2': [71],
+#         'Pts_1': [802],
+#         'Pts_2': [744],
+#         'Odd_1': [1.5],
+#         'Odd_2': [2.63],
+#     }
+#     pre_data = pd.DataFrame(pre_data)
+
+#     model = load_model()
+#     predict = model.predict(pre_data)[0]
+#     print(predict)

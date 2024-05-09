@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from flytekit import task, workflow, ImageSpec
 import typing
 
+from aws_logger import logger
 from customized_image import image_spec
 
 

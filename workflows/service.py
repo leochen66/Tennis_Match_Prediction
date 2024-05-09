@@ -2,16 +2,16 @@ import bentoml
 import numpy as np
 import pandas as pd
 
+from aws_logger import logger
+
 
 @bentoml.service(
     resources={"cpu": "2"},
     traffic={"timeout": 10},
 )
-
 class TennisPrediction:
     def __init__(self) -> None:
         self.model = bentoml.sklearn.load_model('tennis-predictor:latest')
-        # self.model: bentoml.Model = bentoml.models.get("tennis-predictor:latest")
 
     @bentoml.api
     def tennis_match_prediction(self, odd1: float, odd2: float) -> int:
@@ -29,7 +29,6 @@ class TennisPrediction:
             'Odd_2': [odd2],
         }
         pre_data = pd.DataFrame(pre_data)
-        predict = 1
 
-        # predict = self.model.predict(pre_data)[0]
+        predict = self.model.predict(pre_data)[0]
         return predict
