@@ -1,10 +1,10 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import bentoml
+# import bentoml
 import pickle
 import boto3
-from flytekit import task, workflow
+from flytekit import task
 from datetime import datetime
 
 from sklearn.ensemble import RandomForestClassifier
@@ -19,12 +19,12 @@ from customized_image import image_spec
 def train(x: pd.DataFrame, y: pd.Series) -> RandomForestClassifier:
     rf_classifier = RandomForestClassifier(n_estimators=1500, random_state=100, max_depth=6)
     rf_classifier.fit(x, y)
-    logger.info("[model_train]Model train successfully")
+    logger.info("Model train successfully")
 
     # save model to bemtoMLCloud
-    model_saved = bentoml.sklearn.save_model(BENTO_MODEL_NAME, rf_classifier)
-    bentoml.models.push(f"{BENTO_MODEL_NAME}:latest")
-    logger.info("[model_train]Model saved in BentoCloud")
+    # model_saved = bentoml.sklearn.save_model(BENTO_MODEL_NAME, rf_classifier)
+    # bentoml.models.push(f"{BENTO_MODEL_NAME}:latest")
+    # logger.info("Model saved in BentoCloud")
 
     return rf_classifier
 
@@ -60,7 +60,7 @@ def evaluation(model: RandomForestClassifier, x_test: pd.DataFrame, y_test: pd.S
     # save model to local
     with open(MODEL_FILE, 'wb') as f:
         rf_classifier_loaded = pickle.dump(model, f)
-        logger.info("[model_train]Model saved in local")
+        logger.info("Model saved in local")
 
     # Upload artifacts to AWS S3
     s3 = boto3.client('s3')
@@ -77,25 +77,9 @@ def evaluation(model: RandomForestClassifier, x_test: pd.DataFrame, y_test: pd.S
         s3.upload_file(local_file_path, bucket_name, s3_file_path)
     logger.info(f"Artifacts upload to S3 folder: {s3_folder_name}")
 
+    # delete artifact files
+    for file_name in [MODEL_FILE, REPORT_FILE, IMPORTANCE_PLOT_FILE]:
+        if os.path.exists(file_name):
+            os.remove(file_name)
+
     return accuracy
-
-
-# def predict():
-#     pre_data = {
-#         'Series': [0],
-#         'Court': [1],
-#         'Surface': [3],
-#         'Player_1': [506],
-#         'Player_2': [428],
-#         'Rank_1': [65],
-#         'Rank_2': [71],
-#         'Pts_1': [802],
-#         'Pts_2': [744],
-#         'Odd_1': [1.5],
-#         'Odd_2': [2.63],
-#     }
-#     pre_data = pd.DataFrame(pre_data)
-
-#     model = load_model()
-#     predict = model.predict(pre_data)[0]
-#     print(predict)

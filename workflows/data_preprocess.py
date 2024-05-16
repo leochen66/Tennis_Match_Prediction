@@ -1,6 +1,6 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from flytekit import task, workflow, ImageSpec
+from flytekit import task
 import typing
 
 from aws_logger import logger

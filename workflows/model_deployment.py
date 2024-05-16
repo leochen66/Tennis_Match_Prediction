@@ -1,6 +1,7 @@
 import os
-import bentoml
+# import bentoml
 import typing
+import subprocess
 from flytekit import task, workflow, conditional
 
 from aws_logger import logger
@@ -12,14 +13,20 @@ from customized_image import image_spec
 
 @task(container_image=image_spec)
 def deployment():
-    logger.info(f"[Deployment]Model approved, start deployment")
+    logger.info(f"Model approved, start deployment")
+
+    # deploy by seldon (This is only support on local excution)
+    current_dir = os.path.dirname(__file__)
+    script_path = os.path.join(current_dir, "..", "seldon_deployment.sh")
+    subprocess.run(["sh", script_path])
+
     # todo: Troubleshooting with bentoML team, error occure when annotate model in bentofile.yaml file
     # bentoml.deployment.create(bento = "./", name = "tennis-prediction-flyte")
-
+    
 
 @task(container_image=image_spec)
 def discard() -> int:
-    logger.info(f"[Deployment]Model not approved, will not trigger deployment")
+    logger.info(f"Model not approved, will not trigger deployment")
     return -1
 
 
