@@ -45,7 +45,7 @@ class TennisModel(object):
             print("No deployment folders found in S3.")
             return None
 
-    def predict(self, X):
+    def predict(self, X, features_names=None):
         pre_data = {
             'Series': [0],
             'Court': [1],

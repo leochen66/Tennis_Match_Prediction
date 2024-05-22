@@ -1,4 +1,4 @@
-apiVersion: machinelearning.seldon.io/v2
+apiVersion: machinelearning.seldon.io/v1
 kind: SeldonDeployment
 metadata:
   name: tennis-model
@@ -10,7 +10,7 @@ spec:
     - spec:
         containers:
         - name: classifier
-          image: leochen66/sklearn_tennis:1.2
+          image: leochen66/sklearn_tennis:1.0
     graph:
       name: classifier
     name: default
